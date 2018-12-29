@@ -1,6 +1,9 @@
 # cdh5x86_64
 学习 CDH5.x 版 hadoop 
 
+# 参考资料
+  [官方文档](https://www.cloudera.com/documentation/enterprise/5-10-x/topics/cdh_ig_cdh5_cluster_deploy.html)
+
 # 为什么要安装CDH版的Hadoop?
   第三方的发布版一般对hadoop做了集成\兼容\修复一些BUG,对安装过程做了简化处理,对众多的组件做了兼容测试,并提供web版的管理系统
   
