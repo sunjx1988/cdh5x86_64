@@ -94,11 +94,9 @@ yum -y install  chkconfig  python  bind-utils  psmisc  libxslt  zlib  sqlite  cy
 ssh-keygen -t rsa
 # 复制凭证到131机器上
 ssh-copy-id 192.168.207.131
-
 ```
 
-#（master节点）安装 mysql
-
+> 安装 mysql（master节点）
 ```sh
 
 rpm -qa | grep mariadb
@@ -198,17 +196,18 @@ GRANT ALL ON scm.* TO 'scm'@'%' IDENTIFIED BY '000000';
 
 ```
 > 如果还需要其他组件,则创建对应的库和用户权限
-组件 | 数据库 | 用户
----|---|---
-Cloudera Manager Server | scm | scm
-Activity Monitor | amon | amon
-Reports Manager |rman | rman
-Hue	| hue | hue
-Hive Metastore Server | metastore | hive
-Sentry Server | sentry | sentry
-Cloudera Navigator Audit Server | nav | nav
-Cloudera Navigator Metadata Server | navms | navms
-Oozie | oozie | oozie
+
+|组件|数据库|用户
+|---|---|---
+|Cloudera Manager Server|scm|scm
+|Activity Monitor|amon|amon
+|Reports Manager|rman|rman
+|Hue|hue|hue
+|Hive Metastore Server|metastore|hive
+|Sentry Server|sentry|sentry
+|Cloudera Navigator Audit Server|nav|nav
+|Cloudera Navigator Metadata Server|navms|navms
+|Oozie|oozie|oozie
 
 > 安装mysql驱动
 Important: Do not use the yum install command to install the MySQL driver package, because it installs openJDK, and then uses the Linux alternatives command to set the system JDK to be openJDK.
@@ -220,13 +219,15 @@ sudo cp mysql-connector-java-5.1.47/mysql-connector-java-5.1.47-bin.jar /usr/sha
 
 > 9.安装 Cloudera Manager Server&Agent
 > 9.1方式一：联网方式安装
+```sh
 wget https://archive.cloudera.com/cm5/installer/5.15.0/cloudera-manager-installer.bin
 chmod u+x cloudera-manager-installer.bin
 sudo ./cloudera-manager-installer.bin
+```
 
 > 9.2 方式二：离线安装 将安装包copy到所有集群机器上
-https://archive.cloudera.com/cm5/repo-as-tarball/
-https://archive.cloudera.com/cdh5/repo-as-tarball/
+[https://archive.cloudera.com/cm5/repo-as-tarball/](https://archive.cloudera.com/cm5/repo-as-tarball/)
+[https://archive.cloudera.com/cdh5/repo-as-tarball/](https://archive.cloudera.com/cdh5/repo-as-tarball/)
 
 > 9.3 方式三：不能连Internet的集群方式,内部库方式,在master机器上安装内部库
 
@@ -244,6 +245,7 @@ yum makecache
 yum install nginx 
 
 ```
+
 > 9.3.2 创建内部库，解压tar包并移动到web服务目录下，移动文件并更改权限后，请访问http://web_server>/cm以验证是否看到文件索引。如果看不到任何内容，则Web服务器可能已配置为不显示索引。
 ```sh
 tar xvfz cm5.14.0-centos7.tar.gz
