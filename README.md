@@ -4,6 +4,10 @@
 # 参考资料
   [官方文档](https://www.cloudera.com/documentation/enterprise/5-10-x/topics/cdh_ig_cdh5_cluster_deploy.html)
 
+  [参考资料 https://www.cnblogs.com/raphael5200/p/5294066.html](https://www.cnblogs.com/raphael5200/p/5294066.html)
+
+  [github markdown 基本语法](https://help.github.com/articles/basic-writing-and-formatting-syntax/#headings)
+
 # 为什么要安装CDH版的Hadoop?
   第三方的发布版一般对hadoop做了集成\兼容\修复一些BUG,对安装过程做了简化处理,对众多的组件做了兼容测试,并提供web版的管理系统
   
@@ -188,12 +192,105 @@ All done!
 
 ```
 
-> 创建 Cloudera Manager Server 所需要的数据库
+> 安装mysql驱动
+Important: Do not use the yum install command to install the MySQL driver package, because it installs openJDK, and then uses the Linux alternatives command to set the system JDK to be openJDK.
+注意 不要使用yum 方式安装mysql 驱动包，因为它会安装openjdk
+```sh
+mkdir /usr/share/java
+sudo cp mysql-connector-java-5.1.47/mysql-connector-java-5.1.47-bin.jar /usr/share/java/mysql-connector-java.jar
+```
+
+> 9.安装 Cloudera Manager Server&Agent
+> 9.1方式一：联网方式安装
+```sh
+wget https://archive.cloudera.com/cm5/installer/5.15.0/cloudera-manager-installer.bin
+chmod u+x cloudera-manager-installer.bin
+sudo ./cloudera-manager-installer.bin
+```
+
+> 9.2 方式二：离线安装 将安装包copy到所有集群机器上
+```sh
+sudo yum --nogpgcheck localinstall cloudera-manager-daemons-*.rpm
+sudo yum --nogpgcheck localinstall cloudera-manager-server-*.rpm
+```
+
+> 9.3 方式三：不能连Internet的集群方式,内部库方式,在master机器上安装内部库
+[https://archive.cloudera.com/cm5/repo-as-tarball/](https://archive.cloudera.com/cm5/repo-as-tarball/)
+
+[https://archive.cloudera.com/cdh5/repo-as-tarball/](https://archive.cloudera.com/cdh5/repo-as-tarball/)
+
+> 9.3.1 安装web server
+```sh
+# 添加库 /etc/yum.repos.d/CentOS-Base.repo
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/centos/7/$basearch/
+gpgcheck=0
+enabled=1
+
+yum clean all 
+yum makecache
+yum install nginx 
+
+
+# 设置nginx配置文件
+autoindex on;                        # 开启目录浏览功能；   
+autoindex_exact_size off;            # 关闭详细文件大小统计，让文件大小显示MB，GB单位，默认为b；   
+autoindex_localtime on;              # 开启以服务器本地时区显示文件修改日期！  
+
+```
+
+> 9.3.2 创建内部库，解压tar包并移动到web服务目录下，移动文件并更改权限后，请访问http://master/cm以验证是否看到文件索引。如果看不到任何内容，则Web服务器可能已配置为不显示索引。
+```sh
+tar -zxvf cm5.14.0-centos7.tar.gz
+tar -zxvf cdh5.15.0-centos7.tar.gz
+sudo mv cm /usr/share/nginx/html
+sudo mv cdh /usr/share/nginx/html
+sudo chmod -R ugo+rX /usr/share/nginx/html/cm
+sudo chmod -R ugo+rX /usr/share/nginx/html/cdh
+```
+
+> 9.3.3 (所有节点)修改客户端以使用内部库
+```sh
+# /etc/yum.repos.d/cloudera-repo.repo
+[cloudera-cm-repo]
+name=cloudera-cm-repo
+baseurl=http://master/cm/5
+enabled=1
+gpgcheck=0
+
+[cloudera-cdh-repo]
+name=cloudera-cdh-repo
+baseurl=http://master/cdh/5
+enabled=1
+gpgcheck=0
+
+yum clean all 
+yum makecache
+```
+
+> 9.3.4 使用内部库方式安装
+参考资料 [https://www.cloudera.com/documentation/enterprise/5-15-x/topics/cm_ig_create_local_package_repo.html#cmig_topic_21_3](https://www.cloudera.com/documentation/enterprise/5-15-x/topics/cm_ig_create_local_package_repo.html#cmig_topic_21_3)
+```sh
+chmod u+x cloudera-manager-installer.bin
+sudo ./cloudera-manager-installer.bin --skip_repo_package=1
+```
+
+> 10.创建 Cloudera Manager Server 所需要的数据库
 ```sql
 
 CREATE DATABASE scm DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
 GRANT ALL ON scm.* TO 'scm'@'%' IDENTIFIED BY '000000';
-
+CREATE DATABASE amon DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+GRANT ALL ON amon.* TO 'amon'@'%' IDENTIFIED BY '000000';
+CREATE DATABASE rman DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+GRANT ALL ON rman.* TO 'rman'@'%' IDENTIFIED BY '000000';
+CREATE DATABASE hue DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+GRANT ALL ON hue.* TO 'hue'@'%' IDENTIFIED BY '000000';
+CREATE DATABASE hive DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+GRANT ALL ON hive.* TO 'hive'@'%' IDENTIFIED BY '000000';
+CREATE DATABASE oozie DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;
+GRANT ALL ON oozie.* TO 'oozie'@'%' IDENTIFIED BY '000000';
 ```
 > 如果还需要其他组件,则创建对应的库和用户权限
 
@@ -209,68 +306,14 @@ GRANT ALL ON scm.* TO 'scm'@'%' IDENTIFIED BY '000000';
 |Cloudera Navigator Metadata Server|navms|navms
 |Oozie|oozie|oozie
 
-> 安装mysql驱动
-Important: Do not use the yum install command to install the MySQL driver package, because it installs openJDK, and then uses the Linux alternatives command to set the system JDK to be openJDK.
-注意 不要使用yum 方式安装mysql 驱动包，因为它会安装openjdk
-```sh
-mkdir /usr/share/java
-sudo cp mysql-connector-java-5.1.47/mysql-connector-java-5.1.47-bin.jar /usr/share/java/mysql-connector-java-5.1.47-bin.jar
-```
-
-> 9.安装 Cloudera Manager Server&Agent
-> 9.1方式一：联网方式安装
-```sh
-wget https://archive.cloudera.com/cm5/installer/5.15.0/cloudera-manager-installer.bin
-chmod u+x cloudera-manager-installer.bin
-sudo ./cloudera-manager-installer.bin
-```
-
-> 9.2 方式二：离线安装 将安装包copy到所有集群机器上
-[https://archive.cloudera.com/cm5/repo-as-tarball/](https://archive.cloudera.com/cm5/repo-as-tarball/)
-[https://archive.cloudera.com/cdh5/repo-as-tarball/](https://archive.cloudera.com/cdh5/repo-as-tarball/)
-
-> 9.3 方式三：不能连Internet的集群方式,内部库方式,在master机器上安装内部库
-
-> 9.3.1 安装web server
-```sh
-# 添加库 /etc/yum.repos.d/CentOS-Base.repo
-[nginx]
-name=nginx repo
-baseurl=http://nginx.org/packages/centos/7/$basearch/
-gpgcheck=0
-enabled=1
-
-yum clean all 
-yum makecache
-yum install nginx 
+```sql
 
 ```
 
-> 9.3.2 创建内部库，解压tar包并移动到web服务目录下，移动文件并更改权限后，请访问http://web_server>/cm以验证是否看到文件索引。如果看不到任何内容，则Web服务器可能已配置为不显示索引。
+> 12.其他设置
 ```sh
-tar xvfz cm5.14.0-centos7.tar.gz
-mkdir -p /usr/share/nginx/html
-sudo mv cm /usr/share/nginx/html
-sudo chmod -R ugo+rX /usr/share/nginx/html/cm
-
-# 设置nginx配置文件
-```
-
-> 9.3.3 修改客户端以使用内部库
-```sh
-# /etc/yum.repos.d/cloudera-repo.repo
-[cloudera-repo]
-name=cloudera-repo
-baseurl=http://<web_server>/cm/5
-enabled=1
-gpgcheck=0
-
-yum clean all 
-yum makecache
-```
-
-> 9.3.4 使用内部库方式安装
-```sh
-chmod u+x cloudera-manager-installer.bin
-sudo ./cloudera-manager-installer.bin --skip_repo_package=1
+# /etc/rc.local
+echo "vm.swappiness=10" >> /etc/sysctl.conf
+echo never > /sys/kernel/mm/transparent_hugepage/defrag
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
 ```
